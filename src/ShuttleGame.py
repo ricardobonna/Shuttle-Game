@@ -38,10 +38,9 @@ class shuttleDynamics(threading.Thread):
 
     def run(self):
         while self.isActive:
-            thrustLock.acquire()
-            fd = lib.Fd
-            fe = lib.Fe
-            thrustLock.release()
+            with thrustLock:
+                fd = lib.Fd
+                fe = lib.Fe
 
             self.z1[1] = (self.z2[0]*self.T+self.z1[0]) % SCREEN_WIDTH
             self.z2[1] = (-math.sin(self.z5[0])/self.m)*(fd+fe)*self.T+self.z2[0]
@@ -59,11 +58,10 @@ class shuttleDynamics(threading.Thread):
             self.z5[0] = self.z5[1]
             self.z6[0] = self.z6[1]
 
-            resultLock.acquire()
-            lib.x = int(self.z1[0])
-            lib.y = int(self.z3[0])
-            lib.theta = (self.z5[0]*180/math.pi)
-            resultLock.release()
+            with resultLock:
+                lib.x = int(self.z1[0])
+                lib.y = int(self.z3[0])
+                lib.theta = (self.z5[0]*180/math.pi)
             time.sleep(self.T)
 
 
@@ -95,21 +93,21 @@ if __name__ == '__main__':
                 pygame.quit()
                 sys.exit()
         keys = pygame.key.get_pressed()
-        thrustLock.acquire()
-        if (keys[pygame.K_RIGHT]):
-            lib.Fd = lib.thrust
-        else:
-            lib.Fd = 0
-        if (keys[pygame.K_LEFT]):
-            lib.Fe = lib.thrust
-        else:
-            lib.Fe = 0
-        thrustLock.release()
+        with thrustLock:
+            if (keys[pygame.K_RIGHT]):
+                lib.Fd = lib.thrust
+            else:
+                lib.Fd = 0
+            if (keys[pygame.K_LEFT]):
+                lib.Fe = lib.thrust
+            else:
+                lib.Fe = 0
         pygame.event.clear()
 
-        nave_rot,naverect = rot_center(nave,naverect.center,lib.theta)
-        naverect.centerx = lib.x
-        naverect.centery = lib.y
+        with resultLock:
+            nave_rot,naverect = rot_center(nave,naverect.center,lib.theta)
+            naverect.centerx = lib.x
+            naverect.centery = lib.y
         if naverect.left < 0 or naverect.right > SCREEN_WIDTH:
             pass
         if naverect.top < 0 or naverect.bottom > SCREEN_HEIGHT:
