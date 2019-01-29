@@ -21,24 +21,28 @@ class shuttleDynamics(threading.Thread):
         self.l = l
         self.g = g
         self.T = T
-        self.z1 = [0,0]
-        self.z2 = [0,0]
-        self.z3 = [0,0]
-        self.z4 = [0,0]
-        self.z5 = [0,0]
-        self.z6 = [0,0]
+        self.z1 = [0,0]         # x position
+        self.z2 = [0,0]         # x velocity
+        self.z3 = [0,0]         # y position
+        self.z4 = [0,0]         # y velocity
+        self.z5 = [0,0]         # theta position
+        self.z6 = [0,0]         # theta velocity
+        self.isActive = True    # active flag
         self.start()
 
     def run(self):
-        while 1:
+        while self.isActive:
+            fd = lib.Fd
+            fe = lib.Fe
+
             self.z1[1]=self.z2[0]*self.T+self.z1[0]
-            self.z2[1]=(-math.sin(self.z5[0])/self.m)*(lib.Fd+lib.Fe)*self.T+self.z2[0]
+            self.z2[1]=(-math.sin(self.z5[0])/self.m)*(fd+fe)*self.T+self.z2[0]
 
             self.z3[1]=self.z4[0]*self.T+self.z3[0]
-            self.z4[1]=((math.cos(self.z5[0])/self.m)*(lib.Fd+lib.Fe)-self.g)*self.T+self.z4[0]
+            self.z4[1]=((math.cos(self.z5[0])/self.m)*(fd+fe)-self.g)*self.T+self.z4[0]
 
             self.z5[1]=self.z6[0]*self.T+self.z5[0]
-            self.z6[1]=(self.l/self.I*(lib.Fd-lib.Fe))*self.T+self.z6[0]
+            self.z6[1]=(self.l/self.I*(fd-fe))*self.T+self.z6[0]
 
             self.z1[0] = self.z1[1]
             self.z2[0] = self.z2[1]
@@ -47,9 +51,9 @@ class shuttleDynamics(threading.Thread):
             self.z5[0] = self.z5[1]
             self.z6[0] = self.z6[1]
 
-            lib.x = int(self.z1[0]+lib.width/2)
-            lib.y = int(lib.height/2-self.z3[0])
-            lib.theta = self.z5[0]*180/math.pi
+            lib.x = int(self.z1[0]+lib.width/2) % lib.width
+            lib.y = int(lib.height/2-self.z3[0]) % lib.height
+            lib.theta = (self.z5[0]*180/math.pi) % 360
             time.sleep(self.T)
 
 
@@ -68,11 +72,12 @@ background = pygame.image.load("./figs/earth.png")
 nave = pygame.image.load("./figs/shuttle.png")
 naverect = nave.get_rect(center = (lib.width/2,lib.height/2))
 
-shuttleDynamics = shuttleDynamics(0.002, 0.2, 10, 1, lib.gravity)
+shuttleDynamics = shuttleDynamics(0.02, 0.2, 10, 1, lib.gravity)
 
 while 1:
     for event in pygame.event.get([pygame.QUIT,pygame.MOUSEBUTTONUP,pygame.MOUSEBUTTONDOWN]):
         if event.type == pygame.QUIT:
+            shuttleDynamics.isActive = False
             pygame.quit()
             sys.exit()
     keys = pygame.key.get_pressed()
