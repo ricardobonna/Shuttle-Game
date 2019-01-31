@@ -18,6 +18,82 @@ class lib(object):
 
 lib = lib()
 
+
+class GameObject( pygame.sprite.Sprite ):
+    """
+    Esta é a classe básica de todos os objetos do jogo.
+
+    Para não precisar se preocupar com a renderização, vamos fazer a
+    classe de forma que ela seja compatível com o RenderPlain, que já possui
+    uma função otimizada para renderização direta sobre a tela. Para isso,
+    temos que ter três coisas nesta classe:
+
+    1) Ser derivada de Sprite, isto é uma boa coisa, pois a classe Sprite
+       cria várias facilidades para o nosso trabalho, como poder ser removida
+       dos grupos em que foi colocada, inclusive o de Render, através de
+       uma chamada a self.kill()
+
+    2) Ter self.image. Uma vez que precisamos carregar uma imagem, isto só
+       nos define o nome que daremos a imagem a ser renderizada.
+
+    3) Ter self.rect. Esse retângulo conterá o tamanho da imagem e sua posição.
+       Nas formas:
+           rect = ( ( x, y ), ( width, height ) )
+       ou
+           rect = ( x, y, width, height )
+       e ainda nos fornece algumas facilidades em troca, como o rect.move que
+       já desloca a imagem a ser renderizada com apenas um comando.
+    """
+    def __init__(self, image, position, speed = (0,0), angle = 0):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = image
+        if isinstance( self.image, str ):
+            self.image = os.path.join( images_dir, self.image )
+            self.image = pygame.image.load( self.image )
+
+        self.rect  = self.image.get_rect()
+        screen     = pygame.display.get_surface()
+        self.area  = screen.get_rect()
+
+        self.set_pos(position)
+        self.set_speed(speed)
+
+    def update( self, dt ):
+        move_speed = ( self.speed[ 0 ] * dt / 16,
+                       self.speed[ 1 ] * dt / 16 )
+        self.rect  = self.rect.move( move_speed )
+        if ( self.rect.left > self.area.right ) or \
+               ( self.rect.top > self.area.bottom ) or \
+               ( self.rect.right < 0 ):
+            self.kill()
+        if ( self.rect.bottom < - 40 ):
+            self.kill()
+
+    def get_speed( self ):
+        return self.speed
+
+    def set_speed( self, speed ):
+        self.speed = speed
+
+    def get_pos( self ):
+        return self.rect.center
+
+    def set_pos( self, pos ):
+        self.rect.center = pos
+
+    def get_size( self ):
+        return self.image.get_size()
+
+    def rot_image(self, angle):
+        """rotate an image while keeping its center"""
+        rotated_image = pygame.transform.rotate(self.image, angle)
+        rot_rect = rotated_image.get_rect(center = self.get_pos())
+        self.rect = rot_rect
+
+
+
+
+
 class shuttleDynamics(threading.Thread):
     """ Thread implementing the shuttle dynamics """
     def __init__(self, T=1, m=1, I=1, l=1, g=9.81):
