@@ -3,7 +3,7 @@ import os, sys, pygame, math, time, threading
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 THRUST = 10
-GRAVITY = 25
+GRAVITY = 30
 
 
 class GameObject( pygame.sprite.Sprite ):
@@ -83,7 +83,7 @@ class Ship(GameObject):
 
     def update(self, dt, fd = 0, fe = 0):
         new_pos = (self.speed[0] * dt + self.pos[0], self.speed[1] * dt + self.pos[1])
-        self.set_pos(new_pos)
+        self.set_pos((new_pos[0] % SCREEN_WIDTH, new_pos[1] % SCREEN_HEIGHT))
         self.set_angle((self.angle_speed * dt + self.angle) % (2*math.pi))
 
         new_speed = ((-math.sin(self.angle)/self.m) * (fd+fe) * dt + self.speed[0],
@@ -110,9 +110,10 @@ if __name__ == '__main__':
     black = 0, 0, 0
     screen = pygame.display.set_mode(size)
     background = pygame.image.load("./figs/earth.png")
+    back_size = background.get_size()
 
     shuttle = Ship("./figs/shuttle.png", (SCREEN_WIDTH/2,SCREEN_HEIGHT/2),
-                   0.2, 10, 0.5, GRAVITY)
+                   0.2, 10, 0.7, GRAVITY)
 
     while 1:
         clock.tick(freq)
@@ -136,7 +137,8 @@ if __name__ == '__main__':
 
         # Update screen
         screen.fill(black)
-        screen.blit(background,(SCREEN_WIDTH/3,SCREEN_HEIGHT/3))
+        screen.blit(background,(SCREEN_WIDTH/2 - back_size[0]/2,
+                                SCREEN_HEIGHT/2 - back_size[1]/2))
         screen.blit(shuttle.surf, shuttle.rect)
         pygame.display.flip()
         print("FPS: %0.2f" % clock.get_fps())
