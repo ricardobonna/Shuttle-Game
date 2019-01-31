@@ -1,7 +1,7 @@
-import sys, pygame, math, time, threading
+import os, sys, pygame, math, time, threading
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
 
 thrustLock = threading.Lock()
 resultLock = threading.Lock()
@@ -44,12 +44,11 @@ class GameObject( pygame.sprite.Sprite ):
        e ainda nos fornece algumas facilidades em troca, como o rect.move que
        já desloca a imagem a ser renderizada com apenas um comando.
     """
-    def __init__(self, image, position, speed = (0,0), angle = 0):
+    def __init__(self, image, position, speed = (0,0), angle = 0, angle_speed = 0):
         pygame.sprite.Sprite.__init__(self)
         self.image = image
-        if isinstance( self.image, str ):
-            self.image = os.path.join( images_dir, self.image )
-            self.image = pygame.image.load( self.image )
+        if isinstance(self.image, str):
+            self.image = pygame.image.load(self.image)
 
         self.rect  = self.image.get_rect()
         screen     = pygame.display.get_surface()
@@ -57,31 +56,45 @@ class GameObject( pygame.sprite.Sprite ):
 
         self.set_pos(position)
         self.set_speed(speed)
+        self.set_angle(angle)       # angle in rads
+        self.set_angle_speed(angle_speed)
 
-    def update( self, dt ):
-        move_speed = ( self.speed[ 0 ] * dt / 16,
-                       self.speed[ 1 ] * dt / 16 )
+    def update(self, dt):
+        move_speed = (self.speed[0] * dt, self.speed[1] * dt)
         self.rect  = self.rect.move( move_speed )
+        set_angle((self.angle_speed * dt * 180/math.pi) % 360)
+
         if ( self.rect.left > self.area.right ) or \
                ( self.rect.top > self.area.bottom ) or \
+               ( self.rect.bottom > self.area.top ) or \
                ( self.rect.right < 0 ):
             self.kill()
         if ( self.rect.bottom < - 40 ):
             self.kill()
 
-    def get_speed( self ):
+    def get_speed(self):
         return self.speed
 
-    def set_speed( self, speed ):
+    def set_speed(self, speed):
         self.speed = speed
 
-    def get_pos( self ):
+    def get_pos(self):
         return self.rect.center
 
-    def set_pos( self, pos ):
+    def set_pos(self, pos):
         self.rect.center = pos
 
-    def get_size( self ):
+    def set_angle(self, angle):     # angle must be in radians
+        self.angle = angle
+        rot_image(self.angle * 180/math.pi)
+
+    def set_angle_speed(self, angle_speed):
+        self.angle_speed = angle_speed
+
+    def get_angle_speed(self):
+        return self.angle_speed
+
+    def get_size(self):
         return self.image.get_size()
 
     def rot_image(self, angle):
@@ -91,7 +104,32 @@ class GameObject( pygame.sprite.Sprite ):
         self.rect = rot_rect
 
 
+class Ship(GameObject):
+    def __init__(self, image, position, m = 1, I = 1, l = 1, g = 9.81):
+        GameObject.__init__(self, image, position)
+        self.m = m
+        self.I = I
+        self.l = l
+        self.g = g
 
+    def update(self, dt, fd = 0, fe = 0):
+        move_speed = (self.speed[0] * dt, self.speed[1] * dt)
+        self.rect  = self.rect.move( move_speed )
+        set_angle((self.angle_speed * dt) % 2*math.pi)
+
+        new_speed = ((-math.sin(self.angle)/self.m) * (fd+fe) * dt + self.speed[0],
+                      (-(math.cos(self.angle)/self.m) * (fd+fe) + self.g) * dt + self.speed[1])
+        self.set_speed(new_speed)
+        new_angle_speed = (self.l/self.I * (fd-fe)) * dt + self.angle_speed
+        self.set_angle_speed(new_angle_speed)
+
+        if ( self.rect.left > self.area.right ) or \
+               ( self.rect.top > self.area.bottom ) or \
+               ( self.rect.bottom > self.area.top ) or \
+               ( self.rect.right < 0 ):
+            self.kill()
+        if ( self.rect.bottom < - 40 ):
+            self.kill()
 
 
 class shuttleDynamics(threading.Thread):
