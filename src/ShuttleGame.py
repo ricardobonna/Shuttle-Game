@@ -80,6 +80,18 @@ class Ship(GameObject):
         self.inertia = I
         self.length = l
         self.g = g
+        self.reloaded = True
+        self.k = 0
+
+    def fire(self):
+        self.reloaded = False
+
+    def reload(self):
+        if not self.reloaded:
+            self.k += 1
+            if self.k > 10:
+                self.k = 0
+                self.reloaded = True
 
     def update(self, dt: float, fd=0, fe=0):
         new_pos = (self.speed[0] * dt + self.pos[0], self.speed[1] * dt + self.pos[1])
@@ -91,6 +103,8 @@ class Ship(GameObject):
         self.set_speed(new_speed)
         new_angle_speed = (self.length / self.inertia * (fd - fe)) * dt + self.angle_speed
         self.set_angle_speed(new_angle_speed)
+
+        self.reload()
 
         if (self.rect.left > self.area.right) or \
                 (self.rect.top > self.area.bottom) or \
@@ -128,7 +142,8 @@ if __name__ == '__main__':
         keys = pygame.key.get_pressed()
         Fd = THRUST if keys[pygame.K_RIGHT] else 0
         Fe = THRUST if keys[pygame.K_LEFT] else 0
-        if keys[pygame.K_SPACE]:
+        if keys[pygame.K_SPACE] and shuttle.reloaded:
+            shuttle.fire()
             print('Fire')
         pygame.event.clear()
 
