@@ -8,20 +8,21 @@ THRUST = 10
 GRAVITY = 30.0
 
 
-class GameObject(object):
+class GameObject(pygame.sprite.Sprite):
     """
     All physical objects represented in the game belongs to this class os game objects
     """
 
     def __init__(self, image, position: Tuple[float, float], speed: Tuple[float, float] = (0.0, 0.0),
-                 angle: float = 0.0, angle_speed: float = 0.0):
+                 angle: float = 0.0, angle_speed: float = 0.0, *groups):
+        super().__init__(*groups)
         self.image = image
         if isinstance(self.image, str):
-            self.image = pygame.image.load(self.image)   # Keep original image as surface
+            self.image = pygame.image.load(self.image)
         self.rect = self.image.get_rect()
         self.area = pygame.display.get_surface().get_rect()
-        self.surf = self.image
-        self.surf_size = self.surf.get_size()
+        self.image0 = self.image    # Keep original image as surface
+        self.image_size = self.image.get_size()
 
         self.pos = position
         self.speed = speed
@@ -71,12 +72,12 @@ class GameObject(object):
 
     def rot_image(self, angle: float):
         """rotate an image while keeping its center"""
-        self.surf = pygame.transform.rotate(self.image, (angle * 180 / math.pi) % 360)
-        self.rect = self.surf.get_rect(center=self.get_pos())
-        self.surf_size = self.surf.get_size()
+        self.image = pygame.transform.rotate(self.image0, (angle * 180 / math.pi) % 360)
+        self.rect = self.image.get_rect(center=self.get_pos())
+        self.image_size = self.image.get_size()
 
     def draw(self, window):
-        window.blit(self.surf, self.rect)
+        window.blit(self.image, self.rect)
 
 
 class Ship(GameObject):
@@ -128,8 +129,8 @@ class GameWindow(object):
         self.back_size = self.background.get_size()
         self.shuttle = Ship("./figs/shuttle.png", position=(self.size[0] / 2, self.size[1] / 2),
                             mass=0.2, inertia=10.0, arm_length=1.0, gravity=GRAVITY)
-        self.asteroid_list = []
-        self.bullet_list = []
+        self.asteroid_group = pygame.sprite.Group()
+        self.bullet_group = pygame.sprite.Group()
 
     def generate_asteroid(self):
         """
@@ -154,41 +155,34 @@ class GameWindow(object):
         asteroid_fig = pygame.image.load("./figs/asteroid.png")
         asteroid_fig = pygame.transform.rotozoom(asteroid_fig, asteroid_angle, asteroid_scale)
         new_asteroid = GameObject(asteroid_fig, asteroid_pos, asteroid_speed, angle_speed=asteroid_rot)
-        self.asteroid_list.append(new_asteroid)
+        self.asteroid_group.add(new_asteroid)
 
-    def on_screen(self, position: Tuple[float, float]):
-        return -20 <= position[0] <= self.size[0] + 20 and -20 <= position[1] <= self.size[1] + 20
+    def on_screen(self, sprite_obj):
+        return -20 <= sprite_obj.pos[0] <= self.size[0] + 20 and -20 <= sprite_obj.pos[1] <= self.size[1] + 20
 
     def update(self, dt: float, fd=0, fe=0, fire: bool = False):
         if fire:
             projectile = self.shuttle.fire()
             if projectile is not None:
-                self.bullet_list.append(projectile)
+                self.bullet_group.add(projectile)
         self.shuttle.update(dt, fd, fe)
-        for asteroid in self.asteroid_list:
-            asteroid.update(dt)
-        for bullet in self.bullet_list:
-            bullet.update(dt)
+        self.asteroid_group.update(dt)
+        self.bullet_group.update(dt)
+        pygame.sprite.groupcollide(self.asteroid_group, self.bullet_group, True, True,
+                                   pygame.sprite.collide_circle_ratio(0.7))
 
     def draw(self):
         self.window.fill((0, 0, 0))
         self.window.blit(self.background, (self.size[0] / 2 - self.back_size[0] / 2,
                          self.size[1] / 2 - self.back_size[1] / 2))
-        if not self.on_screen(self.shuttle.pos):
+        if not self.on_screen(self.shuttle):
             print("Game over")
         self.shuttle.draw(self.window)
 
-        for asteroid in self.asteroid_list:
-            if not self.on_screen(asteroid.pos):
-                self.asteroid_list.remove(asteroid)
-                continue
-            asteroid.draw(self.window)
-
-        for bullet in self.bullet_list:
-            if not self.on_screen(bullet.pos):
-                self.bullet_list.remove(bullet)
-                continue
-            bullet.draw(self.window)
+        self.asteroid_group.remove(filter(lambda x: not self.on_screen(x), self.asteroid_group.sprites()))
+        self.bullet_group.remove(filter(lambda x: not self.on_screen(x), self.bullet_group.sprites()))
+        self.asteroid_group.draw(self.window)
+        self.bullet_group.draw(self.window)
 
 
 if __name__ == '__main__':
