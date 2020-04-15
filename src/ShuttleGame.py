@@ -94,8 +94,8 @@ class Ship(GameObject):
     def fire(self):
         if self.reloaded:
             self.reloaded = False
-            projectile_speed = (-self.speed[0] - self.shot_speed * math.sin(self.angle),
-                                -self.speed[1] - self.shot_speed * math.cos(self.angle))
+            projectile_speed = (self.speed[0] - self.shot_speed * math.sin(self.angle),
+                                self.speed[1] - self.shot_speed * math.cos(self.angle))
             bullet_surface = pygame.Surface((5, 5))
             bullet_surface.fill((255, 255, 255))
             return GameObject(bullet_surface, position=self.pos, speed=projectile_speed)
